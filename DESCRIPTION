@@ -1,0 +1,13 @@
+Package: hobots
+Title: Creates time series from Hobos in the Mazatalan observatory
+Version: 0.1.0
+Authors@R: person("Joan-Albert", "Sanchez-Cabeza", , "jasc2005@gmail.com", role = c("aut", "cre"))
+Description: Creates time series from Hobos in the Mazatalan observatory. 2025-08-06: I start with temperature from one single site. This will expanded to multiple stations from different probes. 
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+# Depends: R (>= 4.0.0)
+# Imports: dplyr, lubridate
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3
