@@ -3,8 +3,8 @@
 \name{parse_filename}
 \alias{parse_filename}
 \title{parse_filename.R
-jasc20250806
-Parse Observatory (e.g., Hobo) File Names}
+Creates an homogeneous file name following the pattern:
+#' observatory.stationNumber.depth.variables.dateStart.dateEnd.csv}
 \usage{
 parse_filename(
   fileName,
@@ -15,24 +15,26 @@ parse_filename(
 )
 }
 \arguments{
-\item{fileName}{A character string specifying the file name to parse. The file fist column must be a DateTime stamp.
-Function and/or result parameters are:
-\itemize{
-\item \code{fileName}: A hobo-derived (.csv) file name ID (e.g., "mzt.5.boya24.20220202.csv").
-\item \code{observatory}: a string identifier (e.g., "mzt", "cme", "pmo", "samo").
-\item \code{stationNumber}: station number (e.g., 1 to 11 for Mazatlan).
-\item \code{depth}: A string indicating the measurement depth (e.g., "1m").
-\item \code{variables}: A string representing measured variables (e.g., "ot" for oxygen and temperature).
-\item \code{dateStart}: start date (e.g., "20200101").
-\item \code{dateEnd}: end date (e.g., "20200202").
-\item \code{newName}: string, example: "mzt.1.2m.ot.20200101.20200202.csv"
-}}
+\item{fileName}{A character string specifying the CSV file name to parse. The file's first column must be a DateTime stamp in "YYYY/MM/DD HH:MM:SS" format.}
+
+\item{observatory}{A string identifier for the observatory (e.g., "mzt", "cme").}
+
+\item{stationNumber}{Station number (e.g., 1 to 11 for Mazatlan).}
+
+\item{depth}{Measurement depth as string (e.g., "1m").}
+
+\item{variables}{String representing measured variables (e.g., "ot" for oxygen and temperature).}
 }
 \value{
-newName (string).
-}
+A character string with the standardized file name including date start and end.
 }
 \description{
-Extracts components from file names following the pattern
-observatory.stationNumber.depth.variables.dateStart.dateEnd.csv
+parse_filename.R
+Creates an homogeneous file name following the pattern:
+#' observatory.stationNumber.depth.variables.dateStart.dateEnd.csv
+}
+\examples{
+\dontrun{
+parse_filename("mzt.boya24.20220202.csv", stationNumber = 5, variables = "ot")
+}
 }
