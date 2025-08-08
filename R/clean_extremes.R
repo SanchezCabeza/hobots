@@ -71,34 +71,3 @@ clean_extremes <- function(fileName, column = "tem", n_check = 48, factor = 3) {
 
   return(data)
 }
-
-  # immediately delete non-existing records (e.g., instrument marks)
-  data.initial <- nrow(data)
-  data <- data[!is.na(data[[column]]), ]
-  data.nomarks <- nrow(data)
-
-  # Head
-  head_vals    <- data[[column]][1:n_check]
-  head_mean    <- mean(head_vals, na.rm = TRUE)
-  head_sd      <- sd(head_vals, na.rm = TRUE)
-  head_upper   <- head_mean + factor * head_sd
-  head_lower   <- head_mean - factor * head_sd
-  head_indices <- which(1:nrow(data) <= n_check &
-                          (data[[column]] < head_lower | data[[column]] > head_upper))
-
-  # Tail
-  tail_vals    <- tail(data[[column]], n_check)
-  tail_mean    <- mean(tail_vals, na.rm = TRUE)
-  tail_sd      <- sd(tail_vals, na.rm = TRUE)
-  tail_upper   <- tail_mean + factor * tail_sd
-  tail_lower   <- tail_mean - factor * tail_sd
-  tail_indices <- which(1:nrow(data) > (nrow(data) - n_check) &
-                          (data[[column]] < tail_lower | data[[column]] > tail_upper))
-
-  # Delete those records and return
-  data[c(head_indices, tail_indices), ] <- NULL
-  data.final <- nrow(data)
-  cat(data.initial, "initial data, ", data.initial - data.nomarks, " were only marks, ", data.nomarks - data.final, " were deleted.\n")
-
-  return(data)
-}
