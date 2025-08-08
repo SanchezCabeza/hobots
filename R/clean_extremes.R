@@ -4,7 +4,7 @@
 #' The criterion is based on the mean ± factor × standard deviation of the first and last
 #' `n_check` values in the column. Records outside this range are assumed to be wrong and are deleted.
 #'
-#' @param data A data frame containing a time series column (e.g., temperature).
+#' @param fileName A character string specifying the CSV file name to parse.
 #' @param column Column name or number to inspect (default = "tem").
 #' @param n_check Number of rows to check at the beginning and end (default = 48).
 #' @param factor Multiplier of standard deviation to define threshold (default = 3).
@@ -13,11 +13,12 @@
 #' @export
 #' @examples
 #'  \dontrun{
-#' clean_extremes(data, column = "tem", n_check = 48, factor = 3)
+#' clean_extremes(fileName, column = "tem", n_check = 48, factor = 3)
 #' }
-clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
+clean_extremes <- function(fileName, column = "tem", n_check = 48, factor = 3) {
   # Remove rows with NA in the specified column
   # This includes extra hobo columns created with marks but no data and will be removed
+  data <- read.csv(fileName, stringsAsFactors = FALSE)
   if (is.numeric(column)) {
     if (column > ncol(data) | column <= 0) {
       stop(paste("Column", column, "not found in data."))
