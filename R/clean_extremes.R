@@ -33,6 +33,45 @@ clean_extremes <- function(fileName, column = "tem", n_check = 48, factor = 3) {
     column_name <- column
   }
 
+  # Guardar cantidad inicial de datos
+  data.initial <- nrow(data)
+
+  # Eliminar filas con NA en la columna seleccionada
+  data <- data[!is.na(data[[column_name]]), ]
+  data.nomarks <- nrow(data)
+
+  # --- Validación por cabecera (head) ---
+  head_vals  <- data[[column_name]][1:n_check]
+  head_mean  <- mean(head_vals, na.rm = TRUE)
+  head_sd    <- sd(head_vals, na.rm = TRUE)
+  head_upper <- head_mean + factor * head_sd
+  head_lower <- head_mean - factor * head_sd
+
+  head_indices <- which(1:nrow(data) <= n_check &
+                          (data[[column_name]] < head_lower | data[[column_name]] > head_upper))
+
+  # --- Validación por cola (tail) ---
+  tail_vals  <- tail(data[[column_name]], n_check)
+  tail_mean  <- mean(tail_vals, na.rm = TRUE)
+  tail_sd    <- sd(tail_vals, na.rm = TRUE)
+  tail_upper <- tail_mean + factor * tail_sd
+  tail_lower <- tail_mean - factor * tail_sd
+
+  tail_indices <- which(1:nrow(data) > (nrow(data) - n_check) &
+                          (data[[column_name]] < tail_lower | data[[column_name]] > tail_upper))
+
+  # Eliminar filas extremas
+  indices_to_remove <- unique(c(head_indices, tail_indices))
+  data <- data[-indices_to_remove, ]
+
+  # Imprimir resumen
+  data.final <- nrow(data)
+  cat(data.initial, "initial rows,", data.initial - data.nomarks, "with NA (likely marks),",
+      data.nomarks - data.final, "extremes removed.\n")
+
+  return(data)
+}
+
   # immediately delete non-existing records (e.g., instrument marks)
   data.initial <- nrow(data)
   data <- data[!is.na(data[[column]]), ]
