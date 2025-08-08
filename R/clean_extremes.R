@@ -1,73 +1,64 @@
-#' Cleans bad data from start and end of each sonde (e.g., Hobo) record.
-#'
-#' This function removes extreme values from a selected numeric column in a data frame.
-#' The criterion is based on the mean ± factor × standard deviation of the first and last
-#' `n_check` values in the column. Records outside this range are assumed to be wrong and are deleted.
-#'
-#' @param fileName A character string specifying the CSV file name to parse.
-#' @param column Column name or number to inspect (default = "tem").
-#' @param n_check Number of rows to check at the beginning and end (default = 48).
-#' @param factor Multiplier of standard deviation to define threshold (default = 3).
-#'
-#' @return A modified version of the input data frame with records with initial/last extreme values deleted.
-#' @export
-#' @examples
-#'  \dontrun{
-#' clean_extremes(fileName, column = "tem", n_check = 48, factor = 3)
-#' }
-clean_extremes <- function(fileName, column = "tem", n_check = 48, factor = 3) {
-  # Remove rows with NA in the specified column
-  # This includes extra hobo columns created with marks but no data and will be removed
-  data <- read.csv(fileName, stringsAsFactors = FALSE)
-
-  # Verificar si la columna es numérica o por nombre
-  if (is.numeric(column)) {
-    if (column > ncol(data) || column <= 0) {
-      stop(paste("Column index", column, "is out of bounds."))
+clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
+  # If file name is passed, read it
+  if (is.character(data)) {
+    file_path <- data
+    data <- tryCatch(read.csv(file_path), error = function(e) NULL)
+    if (is.null(data)) {
+      warning(paste("Could not read file:", file_path))
+      return(NULL)
     }
-    column_name <- names(data)[column]
-  } else {
-    if (!(column %in% names(data))) {
-      stop(paste("Column", column, "not found in data."))
-    }
-    column_name <- column
   }
 
-  # Guardar cantidad inicial de datos
-  data.initial <- nrow(data)
+  # Column selection
+  if (is.numeric(column)) {
+    if (column > ncol(data) || column <= 0) {
+      stop("Invalid column index")
+    }
+    col_data <- data[[column]]
+  } else if (is.character(column)) {
+    if (!(column %in% names(data))) {
+      stop("Invalid column name")
+    }
+    col_data <- data[[column]]
+  } else {
+    stop("Column must be a name or index")
+  }
 
-  # Eliminar filas con NA en la columna seleccionada
-  data <- data[!is.na(data[[column_name]]), ]
-  data.nomarks <- nrow(data)
+  # Total rows
+  n <- nrow(data)
+  if (n_check * 2 > n) {
+    warning("n_check too large for dataset")
+    return(data)
+  }
 
-  # --- Validación por cabecera (head) ---
-  head_vals  <- data[[column_name]][1:n_check]
-  head_mean  <- mean(head_vals, na.rm = TRUE)
-  head_sd    <- sd(head_vals, na.rm = TRUE)
-  head_upper <- head_mean + factor * head_sd
-  head_lower <- head_mean - factor * head_sd
+  # Indices for start and end
+  idx_start <- 1:n_check
+  idx_end <- (n - n_check + 1):n
 
-  head_indices <- which(1:nrow(data) <= n_check &
-                          (data[[column_name]] < head_lower | data[[column_name]] > head_upper))
+  # Compute thresholds
+  mean_start <- mean(col_data[idx_start], na.rm = TRUE)
+  sd_start <- sd(col_data[idx_start], na.rm = TRUE)
+  lower_start <- mean_start - factor * sd_start
+  upper_start <- mean_start + factor * sd_start
 
-  # --- Validación por cola (tail) ---
-  tail_vals  <- tail(data[[column_name]], n_check)
-  tail_mean  <- mean(tail_vals, na.rm = TRUE)
-  tail_sd    <- sd(tail_vals, na.rm = TRUE)
-  tail_upper <- tail_mean + factor * tail_sd
-  tail_lower <- tail_mean - factor * tail_sd
+  mean_end <- mean(col_data[idx_end], na.rm = TRUE)
+  sd_end <- sd(col_data[idx_end], na.rm = TRUE)
+  lower_end <- mean_end - factor * sd_end
+  upper_end <- mean_end + factor * sd_end
 
-  tail_indices <- which(1:nrow(data) > (nrow(data) - n_check) &
-                          (data[[column_name]] < tail_lower | data[[column_name]] > tail_upper))
+  # Determine which indices to keep
+  keep <- rep(TRUE, n)
 
-  # Eliminar filas extremas
-  indices_to_remove <- unique(c(head_indices, tail_indices))
-  data <- data[-indices_to_remove, ]
+  # Clean start
+  keep[idx_start] <- col_data[idx_start] >= lower_start & col_data[idx_start] <= upper_start
 
-  # Imprimir resumen
-  data.final <- nrow(data)
-  cat(fileName, ": ", data.initial, "initial rows,", data.initial - data.nomarks, "with NA (likely marks),",
-      data.nomarks - data.final, "extremes removed.\n")
+  # Clean end
+  keep[idx_end] <- keep[idx_end] & col_data[idx_end] >= lower_end & col_data[idx_end] <= upper_end
 
-  return(data)
+  # Return cleaned data
+  removed <- sum(!keep)
+  cat(sprintf("Initial rows: %d | NA: %d | Extremes removed: %d\n",
+              n, sum(is.na(col_data)), removed))
+
+  return(data[keep, ])
 }
