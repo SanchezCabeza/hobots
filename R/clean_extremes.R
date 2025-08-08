@@ -19,14 +19,17 @@ clean_extremes <- function(fileName, column = "tem", n_check = 48, factor = 3) {
   # Remove rows with NA in the specified column
   # This includes extra hobo columns created with marks but no data and will be removed
   data <- read.csv(fileName, stringsAsFactors = FALSE)
+  # Validate column input
   if (is.numeric(column)) {
     if (column > ncol(data) | column <= 0) {
       stop(paste("Column", column, "not found in data."))
     }
+    colname <- names(data)[column]
   } else {
     if (!(column %in% names(data))) {
       stop(paste("Column", column, "not found in data."))
     }
+    colname <- column
   }
 
   # immediately delete non-existing records (e.g., instrument marks)
