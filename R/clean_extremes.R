@@ -66,7 +66,7 @@ clean_extremes <- function(fileName, column = "tem", n_check = 48, factor = 3) {
 
   # Imprimir resumen
   data.final <- nrow(data)
-  cat(data.initial, "initial rows,", data.initial - data.nomarks, "with NA (likely marks),",
+  cat(fileName, ": ", data.initial, "initial rows,", data.initial - data.nomarks, "with NA (likely marks),",
       data.nomarks - data.final, "extremes removed.\n")
 
   return(data)
