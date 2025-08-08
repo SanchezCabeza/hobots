@@ -59,7 +59,7 @@ clean_extremes <- function(fileName, column = "tem", n_check = 48, factor = 3) {
   # Delete those records and return
   data[c(head_indices, tail_indices), ] <- NULL
   data.final <- nrow(data)
-  cat(data.initial, "initial data, ", data.initial - data.nomarks, " were only marks, ", data.nomarks - data.final, " were deleted.")
+  cat(data.initial, "initial data, ", data.initial - data.nomarks, " were only marks, ", data.nomarks - data.final, " were deleted.\n")
 
   return(data)
 }
