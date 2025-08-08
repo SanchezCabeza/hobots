@@ -24,5 +24,7 @@ The criterion is based on the mean ± factor × standard deviation of the first 
 \code{n_check} values in the column. Records outside this range are assumed to be wrong and are deleted.
 }
 \examples{
+ \dontrun{
 clean_extremes(data, column = "tem", n_check = 48, factor = 3)
+}
 }
