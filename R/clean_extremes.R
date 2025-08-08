@@ -12,7 +12,9 @@
 #' @return A modified version of the input data frame with records with initial/last extreme values deleted.
 #' @export
 #' @examples
+#'  \dontrun{
 #' clean_extremes(data, column = "tem", n_check = 48, factor = 3)
+#' }
 clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
   # Remove rows with NA in the specified column
   # This includes extra hobo columns created with marks but no data and will be removed
