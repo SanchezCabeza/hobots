@@ -1,5 +1,6 @@
-month_plots <- function(file, column = "tem", output_dir = ".", points_per_day = 48) {
-  # Read CSV
+month_plots <- function(file, column = "tem", points_per_day = 48,
+                        input_dir = ".", output_dir = ".") {
+  # Read csv
   data <- read.csv(file, stringsAsFactors = FALSE)
 
   # Validate column
