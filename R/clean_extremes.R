@@ -1,7 +1,57 @@
+#' Clean extreme values from the start and end of a time series
+#'
+#' This function removes unrealistic extreme values from the first and last
+#' `n_check` records of a time series, based on a mean ± (`factor` × standard deviation)
+#' threshold computed separately for each segment. It is useful for eliminating
+#' spurious measurements that occur when a sensor is out of the water at the
+#' beginning or end of a deployment.
+#'
+#' If a file name is provided, it will be read as a CSV file. The function also
+#' standardizes column names so that the first column is `dateutc` (date-time in
+#' `"yyyy/mm/dd hh:mm:ss"` format) and the second column is `tem` (temperature).
+#'
+#' @param data A data frame or a character string with the path to a CSV file.
+#' @param column Either the name or index of the column to check for extremes
+#'        (default is `"tem"`).
+#' @param n_check Integer. Number of records to check at both the start and end
+#'        of the series (default: `48`).
+#' @param factor Numeric. Number of standard deviations from the mean to define
+#'        extremes (default: `3`).
+#'
+#' @return A cleaned data frame with standardized column names.
+#' @details
+#' The algorithm:
+#' 1. Reads the file (if a path is given) and renames the first column to
+#'    `"dateutc"` and the second column to `"tem"`.
+#' 2. Removes `NA` values from the target column.
+#' 3. Calculates mean and standard deviation of the first `n_check` values and
+#'    removes points outside mean ± (`factor` × sd).
+#' 4. Repeats the process independently for the last `n_check` values.
+#'
+#' Only data in the first and last `n_check` records can be removed.
+#'
+#' @examples
+#' \dontrun{
+#' # Clean a CSV file
+#' cleaned <- clean_extremes("T_Boya24_20141126_20150211.csv")
+#'
+#' # Clean a data frame
+#' df <- read.csv("T_Boya24_20141126_20150211.csv")
+#' cleaned <- clean_extremes(df, column = "tem", n_check = 48, factor = 3)
+#' }
+#'
+#' @export
+
 clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
   # If a file name is given, read it
   if (is.character(data)) {
     data <- read.csv(data, stringsAsFactors = FALSE)
+  }
+
+  # Standardize column names: first col "dateutc", second "tem"
+  if (ncol(data) >= 2) {
+    names(data)[1] <- "dateutc"
+    names(data)[2] <- "tem"
   }
 
   # Validate column
@@ -58,3 +108,5 @@ clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
 
   return(cleaned_data)
 }
+
+
