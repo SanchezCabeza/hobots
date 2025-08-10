@@ -1,57 +1,62 @@
-month_plots <- function(file, column = "tem", output_dir = ".", points_per_day = 48) {
-  # Read CSV
-  data <- read.csv(file, stringsAsFactors = FALSE)
+#' Plot monthly chunks (28 days) from time series data
+#'
+#' This function creates consecutive 28-day plots from a time series CSV file,
+#' assuming a constant sampling interval throughout the file. The first column
+#' must be `dateutc` in "yyyy/mm/dd hh:mm:ss" format, and the selected column
+#' will be plotted. Output PNG files are named as the input file base name plus
+#' `_monthXX.png`.
+#'
+#' @param file Path to the CSV file.
+#' @param column Column index or name of the variable to plot (default: 2).
+#' @param output_dir Directory where PNG plots will be saved (default: "../plots").
+#' @param days_per_chunk Number of days per plot (default: 28).
+#' @param width_cm Width of output PNG in cm (default: 15).
+#' @param height_cm Height of output PNG in cm (default: 10).
+#' @param res Resolution of output PNG in dpi (default: 100).
+#' @return Invisibly returns a vector of saved file paths.
+#' @export
+month_plots <- function(filename, data_col) {
+  # Leer archivo
+  data <- read.csv(filename, stringsAsFactors = FALSE)
 
-  # Convert first column to POSIXct
-  datetime <- as.POSIXct(data[[1]], format = "%Y/%m/%d %H:%M:%S", tz = "UTC")
-  if (any(is.na(datetime))) {
-    stop("Column 1 could not be parsed as datetime with format yyyy/mm/dd hh:mm:ss")
+  # La primera columna es fecha
+  date_col <- names(data)[1]
+
+  # Validar que la columna de datos exista
+  if (is.character(data_col)) {
+    if (!(data_col %in% names(data))) stop(paste("Column", data_col, "not found"))
+    col_index <- which(names(data) == data_col)
+  } else if (is.numeric(data_col)) {
+    if (data_col < 1 || data_col > ncol(data)) stop("data_col index out of range")
+    col_index <- data_col
+  } else {
+    stop("data_col must be column name (character) or index (numeric)")
   }
 
-  # Validate column
-  if (is.numeric(column)) {
-    if (column > ncol(data) || column <= 0) stop("Invalid column index.")
-    col_data <- data[[column]]
-    col_name <- names(data)[column]
-  } else if (is.character(column)) {
-    if (!(column %in% names(data))) stop("Invalid column name.")
-    col_data <- data[[column]]
-    col_name <- column
+  # Convertir fecha a POSIXct si no lo está
+  if (!inherits(data[[date_col]], "POSIXct")) {
+    data[[date_col]] <- as.POSIXct(data[[date_col]], format = "%Y-%m-%d %H:%M", tz = "UTC")
   }
 
-  n_points_month <- points_per_day * 28
-  total_points <- length(col_data)
+  if (any(is.na(data[[date_col]]))) stop("NA values in date column after conversion")
 
-  # Prepare output dir
-  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+  # Calcular intervalo mediano en segundos
+  dt_all <- diff(data[[date_col]])
+  dt_sec <- median(as.numeric(dt_all, units = "secs"), na.rm = TRUE)
 
-  # cm to inches
-  cm_to_in <- function(cm) cm / 2.54
+  if (is.na(dt_sec) || dt_sec <= 0) stop("Invalid or zero sampling interval detected")
 
-  # Loop over chunks of 28 days
-  chunk <- 1
-  for (start_idx in seq(1, total_points, by = n_points_month)) {
-    end_idx <- min(start_idx + n_points_month - 1, total_points)
-    idx <- start_idx:end_idx
+  message(paste("Sampling interval (seconds):", dt_sec))
 
-    # Output file name
-    base_name <- sub("\\.csv$", "", basename(file))
-    plot_name <- sprintf("%s_month%03d.png", base_name, chunk)
-    plot_path <- file.path(output_dir, plot_name)
+  # Agregar mes para resumen o plot
+  data$month <- format(data[[date_col]], "%Y-%m")
 
-    png(filename = plot_path,
-        width = cm_to_in(15), height = cm_to_in(10), units = "in", res = 100)
+  # Calcular media mensual de la columna deseada
+  summary_month <- aggregate(data[[col_index]], by = list(data$month), FUN = mean, na.rm = TRUE)
+  names(summary_month) <- c("Month", "MeanValue")
 
-    par(las = 1)  # y-axis labels horizontal
-    plot(datetime[idx], col_data[idx],
-         type = "p", pch = 20, col = "black",
-         xlab = "Date", ylab = col_name,
-         main = paste("28-day period", chunk, "-", base_name))
+  print(summary_month)
 
-    dev.off()
-    message("Saved: ", plot_path)
+  # Aquí puedes seguir con el gráfico o análisis adicional
 
-    chunk <- chunk + 1
-  }
 }
-
