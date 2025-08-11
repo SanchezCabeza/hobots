@@ -100,6 +100,7 @@ clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
   if (length(remove_idx) == 0) {
     cleaned_data <- data
   } else {
+    cleaned_data <- data[ , 1:2] # revise for more variables
     cleaned_data <- data[-remove_idx, , drop = FALSE]
   }
 
