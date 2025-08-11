@@ -27,7 +27,7 @@ combine_timeseries <- function(pattern = ".csv",
     data <- read.csv(f, stringsAsFactors = FALSE, fileEncoding = "UTF-8")
 
     # Debug: Print column names
-    cat(", columns in", f, ":", paste(names(data), collapse = ", "), "\n")
+    cat(", columns: ", paste(names(data), collapse = ", "), "\n")
 
     # Validate columns
     if (!(date_col %in% names(data))) stop(paste("Date column", date_col, "not found in", f))
