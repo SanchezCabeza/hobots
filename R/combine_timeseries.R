@@ -1,41 +1,50 @@
-#' Combine time series data from multiple CSV files into a single data frame
+#' Combine time series data from multiple CSV files into a single clean data frame
 #'
-#' Reads all CSV files in a directory matching the Mazatlan observatory naming
-#' convention, combines into a single time series ordered by dateutc, removes
-#' identical duplicate records (same dateutc and tem), and isolates conflicting
-#' measurements (same dateutc, different tem) into a separate data frame.
-#' Assumes the first column is dateutc (%Y/%m/%d %H:%M:%S) and the second is tem.
+#' Reads all CSV files matching a pattern, combines into a single time series ordered by dateutc,
+#' and removes duplicate dateutc records (keeping the first occurrence). Assumes the first column
+#' is dateutc (%Y/%m/%d %H:%M:%S) and the second is tem. Handles malformed dates by attempting
+#' alternative formats.
 #'
-#' @param dir_path Path to the directory containing CSV files (default: "data/").
-#' @param pattern File name pattern to match (default: "mzt.*\\.csv$").
+#' @param pattern File name pattern to match (default: ".csv" for all CSV files).
 #' @param date_col Name of the date column (default: "dateutc").
 #' @param value_col Name of the value column (default: "tem").
-#' @return A list with two data frames: 'combined' (ordered, no duplicates)
-#'   and 'conflicts' (records with same dateutc but different tem).
+#' @return A cleaned data frame with unique, ordered dateutc records.
 #' @export
 #' @examples
 #' \dontrun{
-#' result <- combine_timeseries("data/")
-#' write.csv(result$combined, "mzt_combined.csv", row.names = FALSE)
-#' write.csv(result$conflicts, "mzt_conflicts.csv", row.names = FALSE)
+#' cleaned <- combine_timeseries(pattern = "mzt.*\\.csv$")
+#' write.csv(cleaned, "mzt_combined_cleaned.csv", row.names = FALSE)
 #' }
 combine_timeseries <- function(pattern = ".csv",
-                                date_col = "dateutc", value_col = "tem") {
+                               date_col = "dateutc", value_col = "tem") {
   # List CSV files
-  files <- list.files(pattern = pattern, full.names = TRUE)
-  if (length(files) == 0) stop("No files found in directory matching pattern")
+  files <- list.files(pattern = pattern)
+  if (length(files) == 0) stop("No files found matching pattern")
 
   # Read each file
   data_list <- lapply(files, function(f) {
+    cat("File:", f)
     data <- read.csv(f, stringsAsFactors = FALSE, fileEncoding = "UTF-8")
+
+    # Debug: Print column names
+    cat(", columns in", f, ":", paste(names(data), collapse = ", "), "\n")
 
     # Validate columns
     if (!(date_col %in% names(data))) stop(paste("Date column", date_col, "not found in", f))
     if (!(value_col %in% names(data))) stop(paste("Value column", value_col, "not found in", f))
 
-    # Parse dateutc as POSIXct
-    data[[date_col]] <- as.POSIXct(data[[date_col]], format = "%Y/%m/%d %H:%M:%S", tz = "UTC")
-    if (any(is.na(data[[date_col]]))) stop(paste("Invalid dates in", f))
+    # Parse dateutc, handling malformed dates
+    tryCatch({
+      data[[date_col]] <- as.POSIXct(data[[date_col]], format = "%Y/%m/%d %H:%M:%S", tz = "UTC")
+    }, error = function(e) {
+      cat("Warning: Date parsing failed in", f, ", trying alternative format\n")
+      data[[date_col]] <- as.POSIXct(data[[date_col]], format = "%Y-%m-%d", tz = "UTC")
+      if (any(is.na(data[[date_col]]))) {
+        na_rows <- is.na(data[[date_col]])
+        cat("Removed", sum(na_rows), "rows with invalid dates in", f, "\n")
+        data <- data[!na_rows, ]
+      }
+    })
 
     # Keep only dateutc and tem columns
     data <- data[, c(date_col, value_col), drop = FALSE]
@@ -50,50 +59,14 @@ combine_timeseries <- function(pattern = ".csv",
   # Sort by dateutc
   combined <- combined[order(combined$dateutc), ]
 
-  # Identify duplicates by dateutc
-  dup_indices <- duplicated(combined$dateutc) | duplicated(combined$dateutc, fromLast = TRUE)
-  dup_data <- combined[dup_indices, ]
-
-  # Separate identical and conflicting duplicates
-  if (nrow(dup_data) > 0) {
-    # Use data.table for efficient grouping
-    library(data.table)
-    dt <- as.data.table(combined)
-    setkey(dt, dateutc)
-
-    # Find unique dateutc with multiple records
-    dup_dates <- dt[duplicated(dateutc) | duplicated(dateutc, fromLast = TRUE), unique(dateutc)]
-
-    conflicts <- data.frame()
-    keep_indices <- rep(TRUE, nrow(combined))
-
-    for (d in dup_dates) {
-      rows <- dt[dateutc == d]
-      if (length(unique(rows$tem)) == 1) {
-        # Identical tem values: keep only the first row
-        keep_indices[combined$dateutc == d][-1] <- FALSE
-      } else {
-        # Conflicting tem values: add to conflicts
-        conflicts <- rbind(conflicts, as.data.frame(rows))
-        keep_indices[combined$dateutc == d] <- FALSE
-      }
-    }
-
-    # Final cleaned data (no duplicates or conflicts)
-    combined <- combined[keep_indices, ]
-  } else {
-    conflicts <- data.frame(dateutc = as.POSIXct(character()), tem = numeric())
-  }
-
-  # Ensure conflicts is sorted
-  if (nrow(conflicts) > 0) {
-    conflicts <- conflicts[order(conflicts$dateutc), ]
-  }
+  # Remove duplicates by dateutc, keeping first
+  dup_count <- sum(duplicated(combined$dateutc))
+  combined <- combined[!duplicated(combined$dateutc), ]
 
   # Print summary
-  cat(sprintf("Combined %d files, %d total rows, %d duplicates found, %d conflicting rows\n",
-              length(files), nrow(combined) + nrow(conflicts), nrow(dup_data), nrow(conflicts)))
+  cat(sprintf("Combined %d files, %d unique rows after removing %d duplicates\n",
+              length(files), nrow(combined), dup_count))
 
-  # Return both data frames
-  list(combined = combined, conflicts = conflicts)
+  # Return the clean data frame
+  combined
 }
