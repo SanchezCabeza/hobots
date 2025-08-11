@@ -1,16 +1,16 @@
 #' Flag bad data in a time series with continuous 30-minute intervals
 #'
-#' Processes a time series with dateutc and tem, transforms it into a continuous
-#' 30-minute time series (filling gaps with NA for tem), and flags bad data
-#' (missing, outliers, anomalies). Returns the data frame with a 'flag' column
-#' (0 = good, 1 = missing, 2 = outlier, 3 = anomaly).
+#' Creates a continuous 30-minute time series from a data frame with dateutc and tem.
+#' Interpolates tem for gaps ≤30 minutes using linear interpolation, leaves gaps >30 minutes
+#' as NA. Applies quality flags: 1 = Good, 2 = Quality Not Evaluated, 3 = Questionable/Suspect,
+#' 4 = Bad, 9 = Missing Data. Outputs dateutc as character (YYYY-MM-DD HH:MM:SS).
 #'
 #' @param df Data frame with 'dateutc' (POSIXct) and 'tem' (numeric) columns.
-#' @param temp_range Numeric vector of min/max plausible temperatures (default: c(10, 35)).
-#' @param z_threshold Numeric z-score threshold for outliers (default: 3).
+#' @param temp_range Numeric vector of min/max plausible temperatures (default: c(10, 40)).
+#' @param z_threshold Numeric z-score threshold for questionable data (default: 3).
 #' @param jump_threshold Max allowed temp change per 30-min interval (default: 5).
 #' @param flatline_threshold Max consecutive identical values (default: 5).
-#' @return Data frame with continuous dateutc, tem, and flag columns.
+#' @return Data frame with dateutc (character), tem, and flag columns.
 #' @export
 #' @examples
 #' \dontrun{
@@ -18,8 +18,15 @@
 #' flagged <- flag_bad_data(cleaned)
 #' write.csv(flagged, "mzt_flagged.csv", row.names = FALSE)
 #' }
-flag_bad_data <- function(df, temp_range = c(10, 35), z_threshold = 3,
+flag_bad_data <- function(df, temp_range = c(10, 40), z_threshold = 3,
                           jump_threshold = 5, flatline_threshold = 5) {
+  # test
+  df <- combined
+  temp_range = c(10, 40)
+  z_threshold = 3
+  jump_threshold = 5
+  flatline_threshold = 5
+
   library(dplyr)  # For mutate, arrange, left_join
 
   # Validate input
@@ -29,44 +36,64 @@ flag_bad_data <- function(df, temp_range = c(10, 35), z_threshold = 3,
   # Step 1: Sort by dateutc
   df <- df %>% arrange(dateutc)
 
-  # Step 2: Create continuous 30-minute sequence
-  start_time <- min(df$dateutc, na.rm = TRUE)
-  end_time <- max(df$dateutc, na.rm = TRUE)
-  full_times <- seq.POSIXt(from = start_time, to = end_time, by = "30 min")
-  full_df <- data.frame(dateutc = full_times)
+  # Step 2: Identify segments (gaps > 30 min = 1800 sec)
+  df$diff_sec <- c(NA, difftime(df$dateutc[-1], df$dateutc[-nrow(df)], units = "secs"))
+  df$segment <- cumsum(df$diff_sec > 1800 | is.na(df$diff_sec))
 
-  # Step 3: Merge with original data, filling missing tem with NA
-  df <- full_df %>% left_join(df, by = "dateutc")
+  # Step 3: Interpolate within segments (gaps ≤ 30 min)
+  full_df_list <- lapply(unique(df$segment), function(seg) {
+    seg_df <- df %>% filter(segment == seg)
+    start_time <- min(seg_df$dateutc)
+    end_time <- max(seg_df$dateutc)
+    full_times <- seq.POSIXt(from = start_time, to = end_time, by = "30 min")
+    if (nrow(seg_df) > 1 && length(full_times) > 1) {
+      interpolated <- approx(seg_df$dateutc, seg_df$tem, xout = full_times, method = "linear")
+      data.frame(dateutc = full_times, tem = interpolated$y)
+    } else {
+      data.frame(dateutc = start_time, tem = seg_df$tem[1])
+    }
+  })
 
-  # Step 4: Flag missing values (NA in tem)
-  df <- df %>% mutate(flag = ifelse(is.na(tem), 1, 0))
+  # Step 4: Combine segments
+  full_df <- do.call(rbind, full_df_list)
 
-  # Step 5: Check irregular intervals (should be ~30 min = 1800 sec)
-  df$interval_sec <- c(NA, difftime(df$dateutc[-1], df$dateutc[-nrow(df)], units = "secs"))
-  df <- df %>% mutate(flag = ifelse(flag == 0 & !is.na(interval_sec) & interval_sec > 3600, 3, flag))  # Flag gaps >1 hour
+  # Step 5: Create continuous 30-minute sequence and merge
+  overall_start <- min(full_df$dateutc)
+  overall_end <- max(full_df$dateutc)
+  overall_times <- seq.POSIXt(from = overall_start, to = overall_end, by = "30 min")
+  overall_df <- data.frame(dateutc = overall_times)
+  full_df <- overall_df %>% left_join(full_df, by = "dateutc")
+  plot(full_df$dateutc, full_df$tem, pch = ".")
 
-  # Step 6: Flag outliers (range and z-score)
-  df <- df %>% mutate(z_score = (tem - mean(tem, na.rm = TRUE)) / sd(tem, na.rm = TRUE))
-  df <- df %>% mutate(flag = ifelse(flag == 0 & (tem < temp_range[1] | tem > temp_range[2]), 2, flag),
-                      flag = ifelse(flag == 0 & abs(z_score) > z_threshold, 2, flag))
+  # Step 6: Initialize flags (2 = Quality Not Evaluated, 9 = Missing)
+  full_df <- full_df %>% mutate(flag = ifelse(is.na(tem), 9, 2))
 
-  # Step 7: Flag anomalies (jumps)
-  df$temp_diff <- c(NA, diff(df$tem))
-  df <- df %>% mutate(flag = ifelse(flag == 0 & abs(temp_diff) > jump_threshold, 3, flag))
+  # Step 7: Flag bad data (4 = Bad, 3 = Questionable/Suspect, 1 = Good)
+  full_df <- full_df %>%
+    mutate(z_score = (tem - mean(tem, na.rm = TRUE)) / sd(tem, na.rm = TRUE),
+           temp_diff = c(NA, diff(tem)),
+           run_length = ave(tem, cumsum(c(1, diff(tem) != 0)), FUN = length))
 
-  # Step 8: Flag flatlines (consecutive identical tem)
-  df$run_group <- rle(df$tem)$lengths
-  df$run_group <- rep(seq_along(df$run_group), df$run_group)
-  df <- df %>% group_by(run_group) %>%
-    mutate(run_length = n()) %>% ungroup() %>%
-    mutate(flag = ifelse(flag == 0 & run_length > flatline_threshold, 3, flag))
+  full_df <- full_df %>%
+    mutate(flag = ifelse(flag == 9, 9, flag)
+
+
+           ,
+           flag = ifelse(flag == 2 & (tem < temp_range[1] | tem > temp_range[2]), 4, flag),
+           flag = ifelse(flag == 2 & abs(z_score) > z_threshold, 3, flag),
+           flag = ifelse(flag == 2 & abs(temp_diff) > jump_threshold, 3, flag),
+           flag = ifelse(flag == 2 & run_length > flatline_threshold, 3, flag),
+           flag = ifelse(flag == 2, 1, flag))
+
+  # Step 8: Convert dateutc to character
+  full_df <- full_df %>% mutate(dateutc = format(dateutc, "%Y-%m-%d %H:%M:%S"))
 
   # Step 9: Remove helper columns
-  df <- df %>% select(-z_score, -interval_sec, -temp_diff, -run_group, -run_length)
+  full_df <- full_df %>% select(dateutc, tem, flag)
 
   # Summary
-  cat("Flagged rows:", table(df$flag, useNA = "ifany"), "\n")
-  cat("Total rows:", nrow(df), ", Missing (flag=1):", sum(df$flag == 1), "\n")
+  cat("Flagged rows:", table(full_df$flag, useNA = "ifany"), "\n")
+  cat("Total rows:", nrow(full_df), ", Missing (flag=9):", sum(full_df$flag == 9), "\n")
 
-  df
+  full_df
 }
