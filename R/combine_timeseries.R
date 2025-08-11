@@ -17,9 +17,18 @@
 #' }
 combine_timeseries <- function(pattern = ".csv",
                                date_col = "dateutc", value_col = "tem") {
+  # # test
+  # setwd(wd.clean)
+  # pattern <-".csv"
+  # date_col = "dateutc"
+  # value_col = "tem"
+
   # List CSV files
   files <- list.files(pattern = pattern)
   if (length(files) == 0) stop("No files found matching pattern")
+  # # test
+  # i = 1
+  # f = files[i]
 
   # Read each file
   data_list <- lapply(files, function(f) {
@@ -68,5 +77,5 @@ combine_timeseries <- function(pattern = ".csv",
               length(files), nrow(combined), dup_count))
 
   # Return the clean data frame
-  combined
+  return(combined)
 }
