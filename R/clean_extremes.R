@@ -44,84 +44,70 @@
 #' @export
 
 clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
-  # Read CSV if file path
+  # If a file name is given, read it
   if (is.character(data)) {
     data <- read.csv(data, stringsAsFactors = FALSE)
   }
 
-  # Standardize column names
-  colnames(data) <- c("dateutc", "tem")
+  # Standardize column names: first col "dateutc", second "tem"
+  if (ncol(data) >= 2) {
+    names(data)[1] <- "dateutc"
+    names(data)[2] <- "tem"
+  }
 
   # Validate column
   if (is.numeric(column)) {
-    if (column < 2 || column > ncol(data)) stop("Invalid column index.")
+    if (column > ncol(data) || column <= 0) stop("Invalid column index.")
+    col_data <- data[[column]]
   } else if (is.character(column)) {
     if (!(column %in% names(data))) stop("Invalid column name.")
-    column <- which(names(data) == column)
+    col_data <- data[[column]]
   }
 
-  # Original stats
-  data.initial <- nrow(data)
-  cat(data.initial, " ")
-
-  # Remove NAs
-  data <- data[!is.na(data[[column]]), ]
-  data.nomarks <- nrow(data)
-  cat(data.nomarks, " ")
-
-  # Check size
-  if (n_check * 2 > nrow(data)) {
-    warning("n_check is too large for dataset size; skipping extremes removal.")
+  n <- nrow(data)
+  if (n_check * 2 > n) {
+    warning("n_check is too large for dataset size.")
     return(data)
   }
 
+  # Remove NAs (instrument marks)
+  data.initial <- n
+  data <- data[!is.na(col_data), ]
+  data.nomarks <- nrow(data)
   col_data <- data[[column]]
-  #cat(length(col_data), " ")
 
-  # Start block
-  idx_start    <- seq_len(n_check)
-  mean_start   <- mean(col_data[idx_start])
-  sd_start     <- sd(col_data[idx_start])
-  lower_start  <- mean_start - factor * sd_start
-  upper_start  <- mean_start + factor * sd_start
+  # If we don't have enough data left, return as is
+  if (nrow(data) == 0) return(data)
+
+  # Start indices
+  idx_start <- 1:min(n_check, nrow(data))
+  mean_start <- mean(col_data[idx_start], na.rm = TRUE)
+  sd_start <- sd(col_data[idx_start], na.rm = TRUE)
+  lower_start <- mean_start - factor * sd_start
+  upper_start <- mean_start + factor * sd_start
   remove_start <- idx_start[col_data[idx_start] < lower_start | col_data[idx_start] > upper_start]
-  cat(length(remove_start), " ")
 
-  # End block
-  idx_end    <- (nrow(data) - n_check + 1):nrow(data)
-  mean_end   <- mean(col_data[idx_end])
-  sd_end     <- sd(col_data[idx_end])
-  lower_end  <- mean_end - factor * sd_end
-  upper_end  <- mean_end + factor * sd_end
+  # End indices
+  idx_end <- (nrow(data) - min(n_check, nrow(data)) + 1):nrow(data)
+  mean_end <- mean(col_data[idx_end], na.rm = TRUE)
+  sd_end <- sd(col_data[idx_end], na.rm = TRUE)
+  lower_end <- mean_end - factor * sd_end
+  upper_end <- mean_end + factor * sd_end
   remove_end <- idx_end[col_data[idx_end] < lower_end | col_data[idx_end] > upper_end]
-  cat(length(remove_end), " ")
 
-  # Keep all except removed start/end
-  remove_idx <- unique(c(remove_start, remove_end))
-  cat(length(remove_idx), " ")
-
+  # Remove rows safely
+  remove_idx <- unique(na.omit(c(remove_start, remove_end)))
   if (length(remove_idx) == 0) {
     cleaned_data <- data
   } else {
-    cleaned_data <- data[-remove_idx, ]
-  }
-
-  # Avoid empty output
-  if (length(remove_idx) >= nrow(data)) {
-    warning("Extremes removal would empty dataset; skipping removal.")
-    cleaned_data <- data
-    removed_count <- 0
-  } else {
-    cleaned_data <- data[-remove_idx, ]
-    removed_count <- length(remove_idx)
+    cleaned_data <- data[-remove_idx, , drop = FALSE]
   }
 
   cat(sprintf(
-    "%d initial rows, %d marks removed, %d extremes removed, %d final rows\n",
+    "%d initial rows, %d marks removed, %d extremes removed\n",
     data.initial,
     data.initial - data.nomarks,
-    removed_count,
-    nrow(cleaned_data)
+    length(remove_idx)
   ))
 
   return(cleaned_data)
