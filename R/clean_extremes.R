@@ -48,7 +48,6 @@ clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
   if (is.character(data)) {
     data <- read.csv(data, stringsAsFactors = FALSE)
   }
-  cat(unlist(data), " ")
 
   # Standardize column names
   colnames(data) <- c("dateutc", "tem")
@@ -60,7 +59,6 @@ clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
     if (!(column %in% names(data))) stop("Invalid column name.")
     column <- which(names(data) == column)
   }
-  cat(column, " ")
 
   # Original stats
   data.initial <- nrow(data)
@@ -78,7 +76,7 @@ clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
   }
 
   col_data <- data[[column]]
-  cat(length(col_data), " ")
+  #cat(length(col_data), " ")
 
   # Start block
   idx_start    <- seq_len(n_check)
@@ -98,8 +96,15 @@ clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
   remove_end <- idx_end[col_data[idx_end] < lower_end | col_data[idx_end] > upper_end]
   cat(length(remove_end), " ")
 
+  # Keep all except removed start/end
   remove_idx <- unique(c(remove_start, remove_end))
   cat(length(remove_idx), " ")
+
+  if (length(remove_idx) == 0) {
+    cleaned_data <- data
+  } else {
+    cleaned_data <- data[-remove_idx, ]
+  }
 
   # Avoid empty output
   if (length(remove_idx) >= nrow(data)) {
