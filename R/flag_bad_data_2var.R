@@ -52,7 +52,7 @@ flag_bad_data_2var <- function(df,
   # Sort by date
   df <- df %>% arrange(dateutc)
 
-  # Remove non-physical values before interpolation
+  # Remove (NA) non-physical values before interpolation
   df[[var1]][df[[var1]] < var1_range[1] | df[[var1]] > var1_range[2]] <- NA
   df[[var2]][df[[var2]] < var2_range[1] | df[[var2]] > var2_range[2]] <- NA
 
@@ -92,7 +92,32 @@ flag_bad_data_2var <- function(df,
   result[[paste0(var1, ".flag")]] <- ifelse(is.na(result[[var1]]), 9, 1)
   result[[paste0(var2, ".flag")]] <- ifelse(is.na(result[[var2]]), 9, 1)
 
-  # Helper: Apply z-score and derivative thresholds
+  # Apply z-score, and derivative checks to a single variable
+  apply_quality_checks <- function(df, var, range, z_th, deriv_th) {
+    flag_col <- paste0(var, ".flag")
+    # Compute helper columns
+    df <- df %>%
+      mutate(
+        z_score = (.[[var]] - mean(.[[var]], na.rm = TRUE)) / sd(.[[var]], na.rm = TRUE),
+        derivative = c(NA, diff(.[[var]]) / as.numeric(diff(dateutc) / 60))  # change per minute
+      )
+    # Z-score AND derivative check → flag = 3 (Questionable)
+    df <- df %>%
+      mutate(!!flag_col := ifelse(
+        .data[[flag_col]] == 1 &
+          abs(z_score) > z_th &
+          abs(derivative) > deriv_th,
+        3,
+        .data[[flag_col]]
+      ))
+    # Remove helper columns
+    df <- df %>% select(-z_score, -derivative)
+
+    return(df)
+  }
+
+
+  # Apply z-score and derivative thresholds
   apply_quality_checks <- function(df, var, range, z_th, deriv_th) {
     flag_col <- paste0(var, ".flag")
     df <- df %>%
