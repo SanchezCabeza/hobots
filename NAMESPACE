@@ -3,6 +3,7 @@
 export(clean_extremes)
 export(clean_extremes_2var)
 export(combine_timeseries)
+export(combine_timeseries_2var)
 export(flag_bad_data)
 export(month_plots)
 export(parse_filename)
