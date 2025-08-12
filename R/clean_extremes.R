@@ -48,7 +48,7 @@ clean_extremes <- function(data, column = "tem", n_check = 48, factor = 3) {
   if (is.character(data)) {
     data <- read.csv(data, stringsAsFactors = FALSE)
   }
-
+  #
   # Standardize column names: first col "dateutc", second "tem"
   if (ncol(data) >= 2) {
     names(data)[1] <- "dateutc"
