@@ -2,8 +2,8 @@
 #'
 #' Creates a continuous 30-minute time series from a data frame containing
 #' two numeric variables (e.g., oxygen and temperature).
-#' Non-physical values are removed before interpolation. Interpolation is applied
-#' only to gaps ≤ 30 minutes; longer gaps remain NA.
+#' Non-physical values are removed before interpolation.
+#' Interpolation is applied only to gaps ≤ 30 minutes; longer gaps remain NA.
 #' Applies separate quality flags for each variable:
 #' 1 = Good, 2 = Quality Not Evaluated, 3 = Questionable/Suspect,
 #' 4 = Bad, 9 = Missing Data.
@@ -31,28 +31,36 @@ flag_bad_data_2var <- function(df,
                                var1_range = c(0, 20),     # mg/L
                                var2_range = c(5, 40),     # °C
                                z_threshold = 3,
-                               derivative_threshold = list(oxy = 20, tem = 0.1)) {
+                               derivative_threshold = list(oxy = 0.2, tem = 0.1)) {
+  # # test
+  # df <- combined
+  # var1 = "oxy"
+  # var2 = "tem"
+  # var1_range = c(0, 20)     # mg/L
+  # var2_range = c(5, 40)     # °C
+  # z_threshold = 3
+  # derivative_threshold = list(oxy = 0.2, tem = 0.1)
 
   library(dplyr)
 
-  # --- Validation ---
+  # Validation
   if (!all(c("dateutc", var1, var2) %in% names(df))) {
     stop("Data frame must contain 'dateutc', ", var1, " and ", var2)
   }
   if (!inherits(df$dateutc, "POSIXct")) stop("dateutc must be POSIXct")
 
-  # --- Sort by date ---
+  # Sort by date
   df <- df %>% arrange(dateutc)
 
-  # --- Remove non-physical values before interpolation ---
+  # Remove non-physical values before interpolation
   df[[var1]][df[[var1]] < var1_range[1] | df[[var1]] > var1_range[2]] <- NA
   df[[var2]][df[[var2]] < var2_range[1] | df[[var2]] > var2_range[2]] <- NA
 
-  # --- Identify segments (gaps > 30 min) ---
+  # Identify segments (gaps > 30 min)
   df$diff_sec <- c(NA, difftime(df$dateutc[-1], df$dateutc[-nrow(df)], units = "secs"))
   df$segment <- cumsum(df$diff_sec > 1800 | is.na(df$diff_sec))
 
-  # --- Interpolate within segments for each variable ---
+  # Interpolate within segments for each variable
   interp_segment <- function(seg_df, var) {
     start_time <- min(seg_df$dateutc)
     end_time   <- max(seg_df$dateutc)
@@ -70,7 +78,7 @@ flag_bad_data_2var <- function(df,
   var1_interp <- do.call(rbind, lapply(segs, function(s) interp_segment(df[df$segment == s, ], var1)))
   var2_interp <- do.call(rbind, lapply(segs, function(s) interp_segment(df[df$segment == s, ], var2)))
 
-  # --- Create continuous 30-min sequence ---
+  # Create continuous 30-min sequence
   overall_start <- min(df$dateutc)
   overall_end   <- max(df$dateutc)
   overall_times <- seq.POSIXt(from = overall_start, to = overall_end, by = "30 min")
@@ -80,11 +88,11 @@ flag_bad_data_2var <- function(df,
     left_join(var1_interp %>% rename(!!var1 := value), by = "dateutc") %>%
     left_join(var2_interp %>% rename(!!var2 := value), by = "dateutc")
 
-  # --- Initialize flags ---
+  # Initialize flags
   result[[paste0(var1, ".flag")]] <- ifelse(is.na(result[[var1]]), 9, 1)
   result[[paste0(var2, ".flag")]] <- ifelse(is.na(result[[var2]]), 9, 1)
 
-  # --- Helper: Apply z-score and derivative thresholds ---
+  # Helper: Apply z-score and derivative thresholds
   apply_quality_checks <- function(df, var, range, z_th, deriv_th) {
     flag_col <- paste0(var, ".flag")
     df <- df %>%
@@ -106,7 +114,7 @@ flag_bad_data_2var <- function(df,
   result <- apply_quality_checks(result, var1, var1_range, z_threshold, derivative_threshold[[var1]])
   result <- apply_quality_checks(result, var2, var2_range, z_threshold, derivative_threshold[[var2]])
 
-  # --- Finalize ---
+  # Finalize
   result$dateutc <- format(result$dateutc, "%Y-%m-%d %H:%M:%S")
 
   return(result)
