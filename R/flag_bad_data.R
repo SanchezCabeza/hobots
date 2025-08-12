@@ -10,7 +10,7 @@
 #' @param z_threshold Numeric z-score threshold for questionable data (default: 3).
 #' @param jump_threshold Max allowed temp change per 30-min interval (default: 5).
 #' @param flatline_threshold Max consecutive identical values (default: 5).
-#' @return Data frame with dateutc (character), tem, and flag columns.
+#' @return Data frame with dateutc (character), tem, and tem.flag columns.
 #' @export
 #' @examples
 #' \dontrun{
@@ -65,32 +65,32 @@ flag_bad_data <- function(df, temp_range = c(10, 40),
   plot(full_df$dateutc, full_df$tem, pch = ".")
 
   # Step 6: Initialize flags (1 = Good, 9 = Missing)
-  full_df <- full_df %>% mutate(flag = ifelse(is.na(tem), 9, 1))
-  table(full_df$flag)
-  summary(full_df$flag)
+  full_df <- full_df %>% mutate(tem.flag = ifelse(is.na(tem), 9, 1))
+  table(full_df$tem.flag)
+  summary(full_df$tem.flag)
 
-  ## Step 7: Flag bad data (4 = Bad, 3 = Questionable/Suspect, 1 = Good)
+  ## Step 7: tem.flag bad data (4 = Bad, 3 = Questionable/Suspect, 1 = Good)
   # create columns for new filters: z-score, derivative
   full_df <- full_df %>%
     mutate(z_score = (tem - mean(tem, na.rm = TRUE)) / sd(tem, na.rm = TRUE),
            # derivative in °C/min
            derivative = c(0, diff(full_df$tem)/as.numeric(diff(full_df$dateutc))))
-  table(full_df$flag)
-  summary(full_df$flag)
+  table(full_df$tem.flag)
+  summary(full_df$tem.flag)
 
   # range interval
   full_df <- full_df %>%
-    mutate(flag = ifelse(flag == 1 & (tem < temp_range[1] | tem > temp_range[2]), 4, flag))
-  table(full_df$flag)
-  summary(full_df$flag)
+    mutate(tem.flag = ifelse(tem.flag == 1 & (tem < temp_range[1] | tem > temp_range[2]), 4, tem.flag))
+  table(full_df$tem.flag)
+  summary(full_df$tem.flag)
 
   #z-score
   summary(full_df$z_score) # no extremes 3 sigma
   hist(full_df$z_score, breaks = 30)
   full_df <- full_df %>%
-    mutate(flag = ifelse(flag == 1 & abs(z_score) > z_threshold, 3, flag))
-  table(full_df$flag)
-  summary(full_df$flag)
+    mutate(tem.flag = ifelse(tem.flag == 1 & abs(z_score) > z_threshold, 3, tem.flag))
+  table(full_df$tem.flag)
+  summary(full_df$tem.flag)
 
   # derivative
   #plot(full_df$dateutc, full_df$derivative, pch = 20)
@@ -98,19 +98,19 @@ flag_bad_data <- function(df, temp_range = c(10, 40),
   summary(full_df$derivative)
   hist(full_df$derivative, breaks = 30)
   full_df <- full_df %>%
-    mutate(flag = ifelse(flag == 1 & abs(derivative) > derivative_threshold, 3, flag))
-  table(full_df$flag)
-  summary(full_df$flag)
+    mutate(tem.flag = ifelse(tem.flag == 1 & abs(derivative) > derivative_threshold, 3, tem.flag))
+  table(full_df$tem.flag)
+  summary(full_df$tem.flag)
 
   # Step 8: Convert dateutc to character
   full_df <- full_df %>% mutate(dateutc = format(dateutc, "%Y-%m-%d %H:%M:%S"))
-  summary(full_df$flag)
+  summary(full_df$tem.flag)
 
   # Step 9: Remove helper columns
-  full_df <- full_df %>% select(dateutc, tem, flag)
+  full_df <- full_df %>% select(dateutc, tem, tem.flag)
 
   # Summary
-  cat("Flagged rows:", table(full_df$flag), "\n")
+  cat("Flagged rows:", table(full_df$tem.flag), "\n")
   #cat("Total rows:", nrow(full_df), ", Missing (flag=9):", sum(full_df$flag == 9), "\n")
 
   return(full_df)
