@@ -36,7 +36,7 @@
 #' }
 #'
 #' @export
-clean_extremes <- function(data, columns = c("oxy", "tem"), n_check = 48, factor = 3) {
+clean_extremes_2var <- function(data, columns = c("oxy", "tem"), n_check = 48, factor = 3) {
   # If a file name is given, read it
   if (is.character(data)) {
     data <- read.csv(data, stringsAsFactors = FALSE, fileEncoding = "UTF-8")
