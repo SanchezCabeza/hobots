@@ -32,14 +32,14 @@ flag_bad_data_2var <- function(df,
                                var2_range = c(5, 40),     # °C
                                z_threshold = 3,
                                derivative_threshold = list(oxy = 0.2, tem = 0.1)) {
-  # # test
-  # df <- combined
-  # var1 = "oxy"
-  # var2 = "tem"
-  # var1_range = c(0, 20)     # mg/L
-  # var2_range = c(5, 40)     # °C
-  # z_threshold = 3
-  # derivative_threshold = list(oxy = 0.2, tem = 0.1)
+  # test
+  df <- combined
+  var1 = "oxy"
+  var2 = "tem"
+  var1_range = c(0, 20)     # mg/L
+  var2_range = c(5, 40)     # °C
+  z_threshold = 3
+  derivative_threshold = list(oxy = 0.2, tem = 0.1)
 
   library(dplyr)
 
