@@ -2,29 +2,58 @@
 % Please edit documentation in R/clean_extremes.R
 \name{clean_extremes}
 \alias{clean_extremes}
-\title{Cleans bad data from start and end of each sonde (e.g., Hobo) record.}
+\title{Clean extreme values from the start and end of a time series}
 \usage{
 clean_extremes(data, column = "tem", n_check = 48, factor = 3)
 }
 \arguments{
-\item{data}{A data frame containing a time series column (e.g., temperature).}
+\item{data}{A data frame or a character string with the path to a CSV file.}
 
-\item{column}{Column name or number to inspect (default = "tem").}
+\item{column}{Either the name or index of the column to check for extremes
+(default is \code{"tem"}).}
 
-\item{n_check}{Number of rows to check at the beginning and end (default = 48).}
+\item{n_check}{Integer. Number of records to check at both the start and end
+of the series (default: \code{48}).}
 
-\item{factor}{Multiplier of standard deviation to define threshold (default = 3).}
+\item{factor}{Numeric. Number of standard deviations from the mean to define
+extremes (default: \code{3}).}
 }
 \value{
-A modified version of the input data frame with records with initial/last extreme values deleted.
+A cleaned data frame with standardized column names.
 }
 \description{
-This function removes extreme values from a selected numeric column in a data frame.
-The criterion is based on the mean ± factor × standard deviation of the first and last
-\code{n_check} values in the column. Records outside this range are assumed to be wrong and are deleted.
+This function removes unrealistic extreme values from the first and last
+\code{n_check} records of a time series, based on a mean ± (\code{factor} × standard deviation)
+threshold computed separately for each segment. It is useful for eliminating
+spurious measurements that occur when a sensor is out of the water at the
+beginning or end of a deployment.
+}
+\details{
+Data will be read as a CSV file.
+The function also #' standardizes column names so that the first column
+is \code{dateutc} (date-time in \code{"yyyy/mm/dd hh:mm:ss"} format)
+and the second column is \code{tem} (temperature).
+
+The algorithm:
+\enumerate{
+\item Reads the file (if a path is given) and renames the first column to
+\code{"dateutc"} and the second column to \code{"tem"}.
+\item Removes \code{NA} values from the target column.
+\item Calculates mean and standard deviation of the first \code{n_check} values and
+removes points outside mean ± (\code{factor} × sd).
+\item Repeats the process independently for the last \code{n_check} values.
+}
+
+Only data in the first and last \code{n_check} records can be removed.
 }
 \examples{
- \dontrun{
-clean_extremes(data, column = "tem", n_check = 48, factor = 3)
+\dontrun{
+# Clean a CSV file
+cleaned <- clean_extremes("T_Boya24_20141126_20150211.csv")
+
+# Clean a data frame
+df <- read.csv("T_Boya24_20141126_20150211.csv")
+cleaned <- clean_extremes(df, column = "tem", n_check = 48, factor = 3)
 }
+
 }
