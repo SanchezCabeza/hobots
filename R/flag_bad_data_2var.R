@@ -65,12 +65,23 @@ flag_bad_data_2var <- function(df,
     start_time <- min(seg_df$dateutc)
     end_time   <- max(seg_df$dateutc)
     full_times <- seq.POSIXt(from = start_time, to = end_time, by = "30 min")
-    if (nrow(seg_df) > 1 && length(full_times) > 1) {
-      interpolated <- approx(seg_df$dateutc, seg_df[[var]], xout = full_times, method = "linear")
-      return(data.frame(dateutc = full_times, value = interpolated$y))
+    # Keep only non-NA values for interpolation
+    non_na_idx <- !is.na(seg_df[[var]])
+    if (sum(non_na_idx) >= 2) {
+      # Normal interpolation
+      interpolated <- approx(
+        x = seg_df$dateutc[non_na_idx],
+        y = seg_df[[var]][non_na_idx],
+        xout = full_times,
+        method = "linear"
+      )
+      out <- data.frame(dateutc = full_times, value = interpolated$y)
     } else {
-      return(data.frame(dateutc = start_time, value = seg_df[[var]][1]))
+      # Fewer than two valid points → fill with NA
+      out <- data.frame(dateutc = full_times, value = NA_real_)
     }
+    names(out)[2] <- var
+    return(out)
   }
 
   # Process segments
