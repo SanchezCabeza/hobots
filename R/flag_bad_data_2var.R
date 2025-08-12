@@ -69,12 +69,8 @@ flag_bad_data_2var <- function(df,
     non_na_idx <- !is.na(seg_df[[var]])
     if (sum(non_na_idx) >= 2) {
       # Normal interpolation
-      interpolated <- approx(
-        x = seg_df$dateutc[non_na_idx],
-        y = seg_df[[var]][non_na_idx],
-        xout = full_times,
-        method = "linear"
-      )
+      interpolated <- approx(x = seg_df$dateutc[non_na_idx], y = seg_df[[var]][non_na_idx],
+                             xout = full_times, method = "linear")
       out <- data.frame(dateutc = full_times, value = interpolated$y)
     } else {
       # Fewer than two valid points → fill with NA
