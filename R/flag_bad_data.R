@@ -18,8 +18,8 @@
 #' flagged <- flag_bad_data(cleaned)
 #' write.csv(flagged, "mzt_flagged.csv", row.names = FALSE)
 #' }
-flag_bad_data <- function(df, temp_range = c(10, 40), z_threshold = 3,
-                          derivative_threshold = 0.1) {
+flag_bad_data <- function(df, temp_range = c(10, 40),
+                          z_threshold = 3, derivative_threshold = 0.1) {
   # # test
   # df <- combined
   # temp_range = c(10, 40)
@@ -67,6 +67,7 @@ flag_bad_data <- function(df, temp_range = c(10, 40), z_threshold = 3,
   # Step 6: Initialize flags (1 = Good, 9 = Missing)
   full_df <- full_df %>% mutate(flag = ifelse(is.na(tem), 9, 1))
   table(full_df$flag)
+  summary(full_df$flag)
 
   ## Step 7: Flag bad data (4 = Bad, 3 = Questionable/Suspect, 1 = Good)
   # create columns for new filters: z-score, derivative
@@ -75,11 +76,13 @@ flag_bad_data <- function(df, temp_range = c(10, 40), z_threshold = 3,
            # derivative in °C/min
            derivative = c(0, diff(full_df$tem)/as.numeric(diff(full_df$dateutc))))
   table(full_df$flag)
+  summary(full_df$flag)
 
   # range interval
   full_df <- full_df %>%
     mutate(flag = ifelse(flag == 1 & (tem < temp_range[1] | tem > temp_range[2]), 4, flag))
   table(full_df$flag)
+  summary(full_df$flag)
 
   #z-score
   summary(full_df$z_score) # no extremes 3 sigma
@@ -87,6 +90,7 @@ flag_bad_data <- function(df, temp_range = c(10, 40), z_threshold = 3,
   full_df <- full_df %>%
     mutate(flag = ifelse(flag == 1 & abs(z_score) > z_threshold, 3, flag))
   table(full_df$flag)
+  summary(full_df$flag)
 
   # derivative
   #plot(full_df$dateutc, full_df$derivative, pch = 20)
@@ -96,9 +100,11 @@ flag_bad_data <- function(df, temp_range = c(10, 40), z_threshold = 3,
   full_df <- full_df %>%
     mutate(flag = ifelse(flag == 1 & abs(derivative) > derivative_threshold, 3, flag))
   table(full_df$flag)
+  summary(full_df$flag)
 
   # Step 8: Convert dateutc to character
   full_df <- full_df %>% mutate(dateutc = format(dateutc, "%Y-%m-%d %H:%M:%S"))
+  summary(full_df$flag)
 
   # Step 9: Remove helper columns
   full_df <- full_df %>% select(dateutc, tem, flag)
