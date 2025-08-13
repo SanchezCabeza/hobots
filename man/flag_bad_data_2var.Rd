@@ -15,24 +15,22 @@ flag_bad_data_2var(
 )
 }
 \arguments{
-\item{df}{Data frame containing 'dateutc' (POSIXct) and two variables.}
+\item{df}{Data frame with 'dateutc' (POSIXct) and two variables.}
 
 \item{var1}{Name of the first variable (default: "oxy").}
 
 \item{var2}{Name of the second variable (default: "tem").}
 
-\item{var1_range}{Numeric vector of min/max plausible values for var1 (default: c(0, 20)).}
+\item{var1_range}{Numeric length-2 vector with min/max plausible values for var1.}
 
-\item{var2_range}{Numeric vector of min/max plausible values for var2 (default: c(5, 40)).}
+\item{var2_range}{Numeric length-2 vector with min/max plausible values for var2.}
 
-\item{z_threshold}{Absolute z-score threshold for suspect data (default: 3).}
+\item{z_threshold}{Numeric, z-score threshold for questionable data (default: 3).}
 
-\item{derivative_threshold}{Named list with derivative thresholds for each variable,
-units in (value units / minute). Default: list(oxy = 20, tem = 0.1).}
+\item{derivative_threshold}{Named list with thresholds for each variable (units per minute).}
 }
 \value{
-Data frame with continuous 30-min 'dateutc' (character), both variables,
-and their respective flag columns.
+Data frame with dateutc (character), both variables, and their respective flags.
 }
 \description{
 Creates a continuous 30-minute time series from a data frame containing
@@ -42,10 +40,28 @@ Interpolation is applied only to gaps ≤ 30 minutes; longer gaps remain NA.
 Applies separate quality flags for each variable:
 1 = Good, 2 = Quality Not Evaluated, 3 = Questionable/Suspect,
 4 = Bad, 9 = Missing Data.
+Flag bad data in a two-variable time series with continuous 30-minute intervals
+}
+\details{
+This function:
+\enumerate{
+\item Creates a continuous 30-minute time series from a data frame containing two variables
+(e.g., oxygen and temperature) and a datetime column.
+\item Interpolates each variable within gaps ≤30 minutes using linear interpolation,
+leaving gaps >30 minutes as NA.
+\item Applies quality control flags to each variable:
+\itemize{
+\item 1 = Good
+\item 3 = Questionable/Suspect
+\item 4 = Bad
+\item 9 = Missing Data
+}
+\item Flags are based on plausible physical ranges, z-score thresholds, and derivative thresholds.
+}
 }
 \examples{
 \dontrun{
 flagged <- flag_bad_data_2var(df, var1 = "oxy", var2 = "tem")
-write.csv(flagged, "flagged.csv", row.names = FALSE)
 }
+
 }
