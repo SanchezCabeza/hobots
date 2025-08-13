@@ -43,7 +43,9 @@ flag_bad_data <- function(df, temp_range = c(10, 40),
   full_df_list <- lapply(unique(df$segment), function(seg) {
     seg_df <- df %>% filter(segment == seg)
     start_time <- min(seg_df$dateutc)
+    start_time <- floor_date(start_time, unit = "30 minutes")
     end_time <- max(seg_df$dateutc)
+    end_time <- ceiling_date(end_time, unit = "30 minutes")
     full_times <- seq.POSIXt(from = start_time, to = end_time, by = "30 min")
     if (nrow(seg_df) > 1 && length(full_times) > 1) {
       interpolated <- approx(seg_df$dateutc, seg_df$tem, xout = full_times, method = "linear")

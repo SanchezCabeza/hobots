@@ -77,8 +77,9 @@ flag_bad_data_2var <- function(df,
   # Function: interpolate safely for one variable in one segment
   interpolate_segment <- function(seg_df, var) {
     start_time <- min(seg_df$dateutc)
-    end_time   <- max(seg_df$dateutc)
-    full_times <- seq.POSIXt(from = start_time, to = end_time, by = "30 min")
+    start_time <- floor_date(start_time, unit = "30 minutes")
+    end_time <- max(seg_df$dateutc)
+    end_time <- ceiling_date(end_time, unit = "30 minutes")
 
     non_na_idx <- !is.na(seg_df[[var]])
 
