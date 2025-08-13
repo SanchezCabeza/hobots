@@ -42,7 +42,7 @@ flag_bad_data_2var <- function(df,
                                var1_range = c(0, 20),     # mg/L
                                var2_range = c(5, 40),     # °C
                                z_threshold = 3,
-                               derivative_threshold = list(oxy = 0.2, tem = 0.1)) {
+                               derivative_threshold = list(0.2, 0.1)) {
   # # test
   # df <- combined
   # var1 = "oxy"
@@ -66,9 +66,7 @@ flag_bad_data_2var <- function(df,
   df[[var2]][df[[var2]] < var2_range[1] | df[[var2]] > var2_range[2]] <- NA
 
   # make small negative "oxy" <- 0
-  if ("oxy" %in% names(df)) {
-    df$oxy <- ifelse(df$oxy < 0 & df$oxy > -0.1, 0, df$oxy)
-  }
+  if ("oxy" %in% names(df)) df$oxy <- ifelse(df$oxy < 0 & df$oxy > -0.1, 0, df$oxy)
 
   # Identify segments (gaps > 30 min)
   df$diff_sec <- c(NA, difftime(df$dateutc[-1], df$dateutc[-nrow(df)], units = "secs"))
@@ -78,9 +76,8 @@ flag_bad_data_2var <- function(df,
   interpolate_segment <- function(seg_df, var) {
     start_time <- min(seg_df$dateutc)
     start_time <- floor_date(start_time, unit = "30 minutes")
-    end_time <- max(seg_df$dateutc)
-    end_time <- ceiling_date(end_time, unit = "30 minutes")
-
+    end_time   <- max(seg_df$dateutc)
+    end_time   <- ceiling_date(end_time, unit = "30 minutes")
     non_na_idx <- !is.na(seg_df[[var]])
 
     if (sum(non_na_idx) >= 2) {
@@ -127,7 +124,7 @@ flag_bad_data_2var <- function(df,
     df <- df %>%
       mutate(
         z_score = (.[[var]] - mean(.[[var]], na.rm = TRUE)) / sd(.[[var]], na.rm = TRUE),
-        derivative = c(0, diff(.[[var]]) / as.numeric(diff(dateutc) / 60))
+        derivative = c(0, diff(.[[var]]) / as.numeric(diff(dateutc)))
       ) %>%
       mutate(!!flag_col := ifelse(.data[[flag_col]] == 1 &
                                     (.[[var]] < range[1] | .[[var]] > range[2]),
