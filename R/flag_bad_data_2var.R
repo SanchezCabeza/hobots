@@ -78,6 +78,7 @@ flag_bad_data_2var <- function(df,
     start_time <- floor_date(start_time, unit = "30 minutes")
     end_time   <- max(seg_df$dateutc)
     end_time   <- ceiling_date(end_time, unit = "30 minutes")
+    full_times <- seq.POSIXt(from = start_time, to = end_time, by = "30 min")
     non_na_idx <- !is.na(seg_df[[var]])
 
     if (sum(non_na_idx) >= 2) {
