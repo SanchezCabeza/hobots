@@ -20,22 +20,22 @@ A cleaned data frame with standardized column names (\code{dateutc}, \code{oxy},
 }
 \description{
 Removes unrealistic extreme values from the first and last \code{n_check} records of
-a time series for both oxygen (\code{oxy}) and temperature (\code{tem}), based on a mean ±
-(\code{factor} × standard deviation) threshold computed separately for each segment.
+a time series for both var1 (oxygen \code{oxy}, conductivity " con, ...) and temperature (\code{tem}),
+based on a mean ± #' (\code{factor} × standard deviation) threshold computed separately for each segment.
 Removes entire rows if either variable is out of bounds. Useful for eliminating
 spurious measurements when a sensor is out of the water at the start or end of a deployment.
 }
 \details{
 Data can be a CSV file or data frame. Standardizes column names to \code{dateutc}
-(date-time in "yyyy/mm/dd hh:mm:ss" format), \code{oxy} (oxygen), and \code{tem} (temperature).
+(date-time in "yyyy/mm/dd hh:mm:ss" format), var1 and var2 (\code{tem}, temperature).
 
 The algorithm:
 \enumerate{
 \item Reads the file (if a path is given) and renames the first column to \code{dateutc},
-the second to \code{oxy}, and the third to \code{tem}.
+the second to var1 and the third to var2 (\code{tem}).
 \item Removes rows with NA in either \code{oxy} or \code{tem}.
 \item Calculates mean and standard deviation for the first \code{n_check} values of each variable
-and removes rows where either \code{oxy} or \code{tem} is outside mean ± (\code{factor} × sd).
+and removes rows where either var1 or var2 is outside mean ± (\code{factor} × sd).
 \item Repeats the process independently for the last \code{n_check} values.
 \item Only data in the first and last \code{n_check} records can be removed.
 }
