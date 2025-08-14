@@ -6,12 +6,12 @@
 \usage{
 flag_bad_data_2var(
   df,
-  var1 = "oxy",
+  var1,
   var2 = "tem",
-  var1_range = c(0, 20),
+  var1_range,
   var2_range = c(5, 40),
   z_threshold = 3,
-  derivative_threshold = list(oxy = 0.2, tem = 0.1)
+  derivative_threshold = list(0.2, 0.1)
 )
 }
 \arguments{
