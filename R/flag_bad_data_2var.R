@@ -54,6 +54,14 @@ flag_bad_data_2var <- function(df,
 
   library(dplyr)
 
+  # Ensure derivative_threshold is named
+  if (is.null(names(derivative_threshold)) || any(names(derivative_threshold) == "")) {
+    if (length(derivative_threshold) != 2) {
+      stop("derivative_threshold must be length 2 if unnamed.")
+    }
+    names(derivative_threshold) <- c(var1, var2)
+  }
+
   # Validate
   if (!inherits(df$dateutc, "POSIXct")) stop("dateutc must be POSIXct")
   if (!all(c(var1, var2) %in% names(df))) stop("Both variables must be present in df")
