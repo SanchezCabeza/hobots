@@ -38,19 +38,19 @@
 #' }
 #'
 flag_bad_data_2var <- function(df,
-                               var1 = "oxy", var2 = "tem",
-                               var1_range = c(0, 20),     # mg/L
+                               var1, var2 = "tem",
+                               var1_range,
                                var2_range = c(5, 40),     # °C
                                z_threshold = 3,
                                derivative_threshold = list(0.2, 0.1)) {
   # # test
   # df <- combined
-  # var1 = "oxy"
+  # var1 = "con"
   # var2 = "tem"
-  # var1_range = c(0, 20)     # mg/L
+  # var1_range = c(0, 60000)     #
   # var2_range = c(5, 40)     # °C
   # z_threshold = 3
-  # derivative_threshold = list(oxy = 0.2, tem = 0.1)
+  # derivative_threshold = list(4000, tem = 0.1)
 
   library(dplyr)
 
@@ -63,7 +63,7 @@ flag_bad_data_2var <- function(df,
   }
 
   # Validate
-  if (!inherits(df$dateutc, "POSIXct")) stop("dateutc must be POSIXct")
+  if (!inherits(df$dateutc, "POSIXct"))   stop("dateutc must be POSIXct")
   if (!all(c(var1, var2) %in% names(df))) stop("Both variables must be present in df")
 
   # Sort by time
@@ -117,8 +117,12 @@ flag_bad_data_2var <- function(df,
   full_v2 <- interpolate_var(var2)
 
   # Build continuous timeline
-  overall_times <- seq.POSIXt(min(df$dateutc), max(df$dateutc), by = "30 min")
-  result <- data.frame(dateutc = overall_times) %>%
+  start_time <- min(full_v1$dateutc)
+  start_time <- floor_date(start_time, unit = "30 minutes")
+  end_time   <- max(full_v1$dateutc)
+  end_time   <- ceiling_date(end_time, unit = "30 minutes")
+  overall_times <- seq.POSIXt(from = start_time, to = end_time, by = "30 min")
+  result <- data.frame(dateutc = full_times) %>%
     left_join(full_v1, by = "dateutc") %>%
     left_join(full_v2, by = "dateutc")
 
