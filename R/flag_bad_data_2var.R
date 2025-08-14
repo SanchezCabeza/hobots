@@ -122,7 +122,7 @@ flag_bad_data_2var <- function(df,
   end_time   <- max(full_v1$dateutc)
   end_time   <- ceiling_date(end_time, unit = "30 minutes")
   overall_times <- seq.POSIXt(from = start_time, to = end_time, by = "30 min")
-  result <- data.frame(dateutc = full_times) %>%
+  result <- data.frame(dateutc = overall_times) %>%
     left_join(full_v1, by = "dateutc") %>%
     left_join(full_v2, by = "dateutc")
 
